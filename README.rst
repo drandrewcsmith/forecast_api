@@ -1,41 +1,3 @@
-Installing
-==========
-
-Install the package:
-
-.. code-block:: bash
-
-   $ pip install -e .
-
-Create a local configuration file from template:
-
-.. code-block:: bash
-
-   $ cp trans/confs/templates/local.ini trans/confs/local.ini
-
-
-Running a web application
-=========================
-
-.. code-block:: bash
-
-   $ uwsgi --http :8000 --wsgi-file trans/main/wsgi.py --callable make_wsgi_app trans/confs/local.ini
-
-
-Testing
-=======
-
-Install packages required for testing:
-
-.. code-block:: bash
-
-   $ pip install -r requirements_dev.txt
-
-Run the tests:
-
-.. code-block:: bash
-
-   $ py.test
 ==================
 forecast_api
 ==================
@@ -71,24 +33,22 @@ Native install and development
 ==========
 
 #. Install the package:
+    .. code-block:: bash
 
-.. code-block:: bash
-
-   $ pip install -e .
+      $ pip install -e .
 
 #. Install the packages for testing
+    .. code-block:: bash
 
-.. code-block:: bash
-
-   $ pip install -r requirements_dev.txt
+      $ pip install -r requirements_dev.txt
 
 #. Run tests locally
-.. code-block:: bash
+    .. code-block:: bash
 
-   $ py.test
+      $ py.test
    
 #. Run development instance of api
-.. code-block:: bash
+    .. code-block:: bash
 
-   $ uwsgi --ini=forecast_api/confs/development.ini
+      $ uwsgi --ini=forecast_api/confs/development.ini
 
