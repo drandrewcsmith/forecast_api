@@ -1,0 +1,16 @@
+# Python compiled files
+__pycache__
+
+# Python packages
+*.egg-info
+
+# Tests
+.pytest_cache
+.coverage
+
+# pyenv python version
+.python-version
+
+.idea
+*.log
+*.swp

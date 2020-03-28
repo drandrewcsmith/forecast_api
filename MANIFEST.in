@@ -1,0 +1,4 @@
+include alembic/*
+include alembic/versions/*
+include forecast_api/alembic/*
+include forecast_api/alembic/versions/*

@@ -1,0 +1,22 @@
+version: '2.1'
+services:
+
+  app:
+    image: forecast_api
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile.dev
+    environment:
+      - ENVIRONMENT=development
+
+  tests:
+    extends: app
+    image: forecast_api-tests
+    command: run-tests.sh
+
+  postgres-base:
+    image: postgres:9.6-alpine
+    environment:
+      - POSTGRES_USER=forecast_api
+      - POSTGRES_PASSWORD=forecast_api
+      - POSTGRES_DB=forecast_api
