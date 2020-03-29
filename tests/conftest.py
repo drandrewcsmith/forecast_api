@@ -24,17 +24,6 @@ def webapi(app):
     return webtest.TestApp(app)
 
 
-@pytest.fixture
-def fresh_schema(request):
-    from alembic.command import downgrade, upgrade
-    from alembic.config import Config
-
-    cfg = Config(request.config.getoption('ini_file'))
-
-    downgrade(cfg, 'base')
-    upgrade(cfg, 'head')
-
-
 def pytest_addoption(parser):
     parser.addoption(
         '--ini-file',

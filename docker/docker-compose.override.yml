@@ -6,15 +6,11 @@ services:
     command: run-app.sh
     ports:
       - 8000:8000
-    links:
-      - forecast_api-postgres-dev
     volumes:
       - ../:/usr/src/app
 
   tests:
     container_name: forecast_api-tests
-    links:
-      - forecast_api-postgres-tests
     volumes:
       - ../:/usr/src/app
 
@@ -22,16 +18,3 @@ services:
     extends:
       file: docker-compose.yml
       service: tests
-    links:
-      - forecast_api-postgres-tests
-
-  forecast_api-postgres-dev:
-    container_name: forecast_api-postgres-dev
-    extends:
-      file: docker-compose.yml
-      service: postgres-base
-
-  forecast_api-postgres-tests:
-    extends:
-      file: docker-compose.yml
-      service: postgres-base

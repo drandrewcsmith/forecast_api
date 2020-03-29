@@ -1,6 +1,5 @@
 FROM centos:7
 RUN yum -y install epel-release
-RUN yum -y install postgresql-libs
 RUN yum -y install python36
 RUN yum -y install python36-devel
 RUN yum -y install which
