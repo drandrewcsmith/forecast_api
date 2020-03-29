@@ -1,0 +1,113 @@
+openapi: '3.0.0'
+
+info:
+  title: Forecast API
+  version: '0.0.1'
+
+externalDocs:
+  url: https://github.com/drandrewcsmith/forecast_api
+
+servers:
+  - url: http://localhost:8000/v1
+
+paths:
+  /forecast/holtes:
+    post:
+      description: 'Post request to forecast series using the Holt exponential smoothing method'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoltESRequest'
+      responses:
+        200:
+          description: 'The forecast for the provided series'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Forecast'
+        default:
+          description: 'Unexpected Error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+
+    HoltESRequest:
+      description: 'Forecast request to Holt exponential smoothing'
+      type: object
+      required:
+        - input_data
+        - forecast_horizon
+        - params
+      properties:
+        input_data:
+          $ref: '#/components/schemas/float_array'
+        forecast_horizon:
+          type: integer
+          description: The number of periods to be forecast
+          example: 12
+        params:
+          $ref: '#/components/schemas/HoltESParams'
+
+
+    HoltESParams:
+      description: 'Parameters to the Holt exponential smoothing model'
+      type: object
+      properties:
+        alpha:
+          type: number
+          description: The alpha factor used to smooth level changes
+          example: 0.50
+          minimum: 0.0
+          maximum: 1.0
+        initial_level:
+          type: number
+          description: The level to be used for the first period
+          example: 0.9
+        beta:
+          type: number
+          description: The beta factor used to smooth trend changes
+          example: 0.02
+          minimum: 0.0
+          maximum: 1.0
+        initial_slope:
+          type: number
+          description: The trend to be used for the first period
+          example: 0.5
+        phi:
+          type: number
+          description: The phi factor used to damped exponential trend
+          example: 0.8
+          minimum: 0.0
+          maximum: 1.0
+        exponential:
+          type: boolean
+          description: Multiplicative or additive trend (true = multiplicative)
+          example: false
+        damped:
+          type: boolean
+          description: Dampen the trend component
+          example: false
+
+    Forecast:
+      description: 'The generated forecast'
+      type: object
+      required:
+        - forecast
+        - params
+      properties:
+        forecast:
+          $ref: '#/components/schemas/float_array'
+        params:
+          $ref: '#/components/schemas/HoltESParams'
+
+    float_array:
+      type: array
+      items:
+        type: number
+      example: [ 1.1, 1.6, 2.1, 1.6, 1.1, 1.6, 2.1 ]
