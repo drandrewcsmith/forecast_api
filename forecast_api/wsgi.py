@@ -1,33 +1,40 @@
-import os
-
+import traceback
 import falcon
-from configparser import ConfigParser
-from sqlalchemy import engine_from_config
+import structlog
 
 from forecast_api.api.ping import PingResource
+from forecast_api.api.forecast import ForecastResource
+from forecast_api.app import create_container
+
+_log = structlog.get_logger(__name__)
 
 
 def configure_callable(ini_path=None):
-    engine = read_configuration(ini_path)
-
-    return create_callable(engine)
+    return create_callable(create_container(ini_path))
 
 
-def read_configuration(ini_path=None):
-    ini_path = (
-        ini_path
-        if ini_path is not None
-        else os.environ['FORECAST_API_CONFIG']
+def handle_uncaught_exceptions(ex, request, response, params):
+    if isinstance(ex, falcon.HTTPError):
+        raise ex
+
+    _log.error(f'unexpected {ex!r}:\n{traceback.format_tb(ex.__traceback__)}')
+
+    raise falcon.HTTPInternalServerError(
+        description='I am sorry Dave, I am afraid, I cannot do that'
     )
 
-    config = ConfigParser()
-    config.read(ini_path)
 
-    return engine_from_config(config['forecast_api'], 'sqlalchemy.')
-
-
-def create_callable(engine):
+def create_callable(container):
     app = falcon.API()
-    app.add_route('/alert/ping', PingResource(engine))
-
+    app.add_route(
+        '/alert/ping',
+        PingResource()
+    )
+    app.add_route(
+        '/v1/forecast/holtes',
+        ForecastResource(
+            container('services.methods.holtes')
+        )
+    )
+    app.add_error_handler(Exception, handle_uncaught_exceptions)
     return app
