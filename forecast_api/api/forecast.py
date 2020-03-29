@@ -1,6 +1,8 @@
 import falcon
 import logging
 
+from forecast_api.methods.exceptions import InvalidParameter
+
 _log = logging.getLogger(__name__)
 
 
@@ -23,7 +25,9 @@ class ForecastResource(object):
                 **params
             )
             response.media = forecast
-
+        except InvalidParameter as e:
+            _log.exception('Improperly specified parameter')
+            raise falcon.HTTPBadRequest(description=f'Bad parameter: {e}')
         except Exception:
             _log.exception('Problem generating forecast')
             response.status = falcon.HTTP_INTERNAL_SERVER_ERROR

@@ -46,7 +46,7 @@ components:
         - params
       properties:
         input_data:
-          $ref: '#/components/schemas/float_array'
+          $ref: '#/components/schemas/number_array'
         forecast_horizon:
           type: integer
           description: The number of periods to be forecast
@@ -102,11 +102,11 @@ components:
         - params
       properties:
         forecast:
-          $ref: '#/components/schemas/float_array'
+          $ref: '#/components/schemas/number_array'
         params:
           $ref: '#/components/schemas/HoltESParams'
 
-    float_array:
+    number_array:
       type: array
       items:
         type: number

@@ -1,6 +1,6 @@
 import numpy as np
 from statsmodels.tsa.api import Holt as smholt
-
+from forecast_api.methods.exceptions import InvalidParameter
 
 class Holt:
 
@@ -8,55 +8,79 @@ class Holt:
         pass
 
     def _parse_params(self, **params):
-        alpha = params.get('alpha', None)
-        optimized_alpha = True
-        if alpha:  # TODO what if this is zero??
-            optimized_alpha = False
+        try:
+            alpha = params['alpha']
             alpha = float(alpha)
             if alpha < 0 or alpha > 1:
-                raise ValueError(f'alpha ({alpha}) should be >= 0 and <= 1')
+                raise InvalidParameter(f'alpha ({alpha}) should be >= 0 and <= 1')
+            optimized_alpha = False
+        except KeyError:
+            optimized_alpha = True
+            alpha = None
+        except (TypeError, ValueError) as e:
+            raise InvalidParameter(f'alpha ({alpha}) {e}')
 
-        initial_level = params.get('initial_level', None)
-        optimized_initial_level = True
-        if initial_level:  # TODO what if this is zero??
-            optimized_initial_level = False
+        try:
+            initial_level = params['initial_level']
             initial_level = float(initial_level)
             if initial_level < 0:
-                raise ValueError(f'initial_level ({initial_level}) should be >= 0')
+                raise InvalidParameter(f'initial_level ({initial_level}) should be >= 0')
+            optimized_initial_level = False
+        except KeyError:
+            optimized_initial_level = True
+            initial_level = None
+        except (TypeError, ValueError) as e:
+            raise InvalidParameter(f'initial_level ({initial_level}) {e}')
 
-        beta = params.get('beta', None)
-        optimized_beta = True
-        if beta:  # TODO what if this is zero??
-            optimized_beta = False
+        try:
+            beta = params['beta']
             beta = float(beta)
             if beta < 0 or beta > 1:
-                raise ValueError(f'beta ({beta}) should be >= 0 and <= 1')
+                raise InvalidParameter(f'beta ({beta}) should be >= 0 and <= 1')
+            optimized_beta = False
+        except KeyError:
+            optimized_beta = True
+            beta = None
+        except (TypeError, ValueError) as e:
+            raise InvalidParameter(f'beta ({beta}) {e}')
 
-        initial_slope = params.get('initial_slope', None)
-        optimized_initial_slope = True
-        if initial_slope:  #  TODO what if this is zero??
-            optimized_initial_slope = False
+        try:
+            initial_slope = params['initial_slope']
             initial_slope = float(initial_slope)
+            optimized_initial_slope = False
+        except KeyError:
+            optimized_initial_slope = True
+            initial_slope = None
+        except (TypeError, ValueError) as e:
+            raise InvalidParameter(f'initial_slope ({initial_slope}) {e}')
+
+        try:
+            phi = params['phi']
+            phi = float(phi)
+            if phi < 0 or phi > 1:
+                raise InvalidParameter(f'phi ({phi}) should be >= 0 and <= 1')
+            optimized_phi = False
+        except KeyError:
+            phi = None
+            optimized_phi = True
+        except (TypeError, ValueError) as e:
+            raise InvalidParameter(f'phi ({phi}) {e}')
+
+        damped = params.get('damped', False)
+        exponential = params.get('exponential', False)
+        if not exponential:
+            phi = None
+            optimized_phi = False
 
         to_fit = False
         if optimized_alpha or optimized_initial_level or \
                 optimized_beta or optimized_initial_slope:
             to_fit = True
-
-        phi = params.get('phi', None)
-        if phi:
-            phi = float(phi)
-        damped = params.get('damped', False)
-        exponential = params.get('exponential', False)
-
-        optimized_phi = False
-        if not (exponential):
-            phi = None
-        if (exponential) and not phi:
-            optimized_phi = True
-
         if not to_fit and optimized_phi:
-            raise ValueError(f'phi should be set if exponential={exponential}')
+            raise InvalidParameter(f'phi should be set if exponential={exponential}')
+
+        if exponential and not optimized_initial_slope and initial_level == 0.0:
+            raise InvalidParameter(f'initial level can not be {initial_level} if exponential={exponential}')
 
         return {
             'alpha': alpha,
