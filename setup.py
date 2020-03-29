@@ -33,10 +33,10 @@ setup(
     name='forecast_api',
     version=get_version(),
     author='Andrew Smith',
-    author_email='doktorgeld@gmail.com',
+    author_email='dr.andrew.c.smith@gmail.com',
     description='forecast_api',
     long_description=read_file('README.rst'),
-    url='',
+    url='https://github.com/drandrewcsmith/forecast_api',
     install_requires=install_requires,
     tests_require=tests_require,
     classifiers=[

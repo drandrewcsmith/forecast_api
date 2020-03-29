@@ -1,17 +1,22 @@
 import pytest
 import webtest
 
-from forecast_api.wsgi import create_callable, read_configuration
-
-
-@pytest.fixture(scope='session')
-def db_engine(request):
-    return read_configuration(request.config.getoption('ini_file'))
+from forecast_api.wsgi import create_callable
+from forecast_api.app import create_container
 
 
 @pytest.fixture
-def app(db_engine):
-    return create_callable(db_engine)
+def container(request):
+    return create_container(
+        request.config.getoption(
+            'ini_file'
+        )
+    )
+
+
+@pytest.fixture
+def app(container):
+    return create_callable(container)
 
 
 @pytest.fixture
