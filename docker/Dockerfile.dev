@@ -1,10 +1,14 @@
-FROM centos:7
-RUN yum -y install epel-release
-RUN yum -y install python36
-RUN yum -y install python36-devel
-RUN yum -y install which
-RUN yum -y install nginx
-RUN yum -y install gcc
-COPY ./docker/scripts/* /usr/bin/
+FROM python:3.8-slim-buster
+RUN apt-get -qq update
+RUN apt-get -qq install nginx > /dev/null
+RUN apt-get -qq install gcc > /dev/null
+RUN apt-get -qq purge --auto-remove
+RUN apt-get -qq update
 WORKDIR /usr/src/app
+RUN pip3 install -q --upgrade setuptools
+COPY requirements.txt /usr/src/app
+RUN pip3 install -q -r requirements.txt
+COPY requirements_dev.txt /usr/src/app
+RUN pip3 install -q -r requirements_dev.txt
+COPY ./docker/scripts/* /usr/bin/
 ENTRYPOINT ["entrypoint.sh"]

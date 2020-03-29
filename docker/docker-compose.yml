@@ -3,13 +3,26 @@ services:
 
   app:
     image: forecast_api
+    container_name: forecast_api
     build:
       context: ../
       dockerfile: ./docker/Dockerfile.dev
+    command: run-app.sh
+    ports:
+      - 8000:8000
+    volumes:
+      - ../:/usr/src/app
     environment:
       - ENVIRONMENT=development
 
   tests:
-    extends: app
     image: forecast_api-tests
+    container_name: forecast_api-tests
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile.dev
     command: run-tests.sh
+    volumes:
+      - ../:/usr/src/app
+    environment:
+      - ENVIRONMENT=development

@@ -6,8 +6,6 @@ if [ -d "$EGGDIR" ]; then
 fi
 
 echo 'Building development egg'
-pip3 install -q --upgrade setuptools
-pip3 install -q -e . 
-pip3 install -q -r requirements_dev.txt
+pip3 install -q -e .
 
 "$@"  # execute command passed to script
