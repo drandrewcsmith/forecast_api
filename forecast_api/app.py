@@ -24,16 +24,24 @@ def create_container(ini_path=None) -> Container:
         partial(_forecast_method_holt),
         name='services.methods.holt',
     )
-    container.add_service(partial(_forecast_params_holt),
+    container.add_service(
+        partial(
+            _forecast_params_holt
+        ),
         name='services.methods.parse_holt_params'
     )
     container.add_service(
-        partial(_forecast_method_holtwinter),
+        partial(
+            _forecast_method_holtwinter
+        ),
         name='services.methods.holtwinter',
     )
-    container.add_service(partial(_forecast_params_holtwinter),
-                          name='services.methods.parse_holtwinter_params'
-                          )
+    container.add_service(
+        partial(
+            _forecast_params_holtwinter
+        ),
+        name='services.methods.parse_holtwinter_params'
+    )
 
     return container
 
