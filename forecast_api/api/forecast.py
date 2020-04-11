@@ -28,6 +28,9 @@ class ForecastResource(object):
         except InvalidParameter as e:
             _log.exception('Improperly specified parameter')
             raise falcon.HTTPBadRequest(description=f'Bad parameter: {e}')
-        except Exception:
+        except ValueError as e:
+            _log.exception('Improperly specified parameter')
+            raise falcon.HTTPBadRequest(description=f'Bad parameter: {e}')
+        except Exception as e:
             _log.exception('Problem generating forecast')
-            response.status = falcon.HTTP_INTERNAL_SERVER_ERROR
+            raise falcon.HTTPInternalServerError(description=f'{e}')

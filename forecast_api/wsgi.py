@@ -31,10 +31,17 @@ def create_callable(container):
         PingResource()
     )
     app.add_route(
-        '/v1/forecast/holtes',
+        '/v1/forecast/holt',
         ForecastResource(
-            container('services.methods.holtes')
+            container('services.methods.holt')
         )
     )
+    app.add_route(
+        '/v1/forecast/holtwinter',
+        ForecastResource(
+            container('services.methods.holtwinter')
+        )
+    )
+
     app.add_error_handler(Exception, handle_uncaught_exceptions)
     return app

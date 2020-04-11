@@ -6,6 +6,9 @@ import structlog
 from knot import Container
 
 from forecast_api.methods import Holt
+from forecast_api.methods import parse_holt_params
+from forecast_api.methods import HoltWinter
+from forecast_api.methods import parse_holtwinter_params
 
 
 def create_container(ini_path=None) -> Container:
@@ -18,14 +21,40 @@ def create_container(ini_path=None) -> Container:
         cache=True,
     )
     container.add_service(
-        partial(_holt_forecast_method),
-        name='services.methods.holtes',
+        partial(_forecast_method_holt),
+        name='services.methods.holt',
     )
+    container.add_service(partial(_forecast_params_holt),
+        name='services.methods.parse_holt_params'
+    )
+    container.add_service(
+        partial(_forecast_method_holtwinter),
+        name='services.methods.holtwinter',
+    )
+    container.add_service(partial(_forecast_params_holtwinter),
+                          name='services.methods.parse_holtwinter_params'
+                          )
+
     return container
 
 
-def _holt_forecast_method(c):
+def _forecast_params_holt(c):
+    return partial(parse_holt_params)
+
+
+def _forecast_method_holt(c):
     return Holt(
+        c('services.methods.parse_holt_params')
+    )
+
+
+def _forecast_params_holtwinter(c):
+    return partial(parse_holtwinter_params)
+
+
+def _forecast_method_holtwinter(c):
+    return HoltWinter(
+        c('services.methods.parse_holtwinter_params')
     )
 
 
