@@ -1,141 +1,128 @@
+import numbers
 import numpy as np
+
 from statsmodels.tsa.api import ExponentialSmoothing as smholtwinter
 from forecast_api.methods.exceptions import InvalidParameter
 
 
 def parse_params(**params):
-    try:
-        alpha = params['alpha']
-        alpha = float(alpha)
-        if alpha < 0 or alpha > 1:
-            raise InvalidParameter(f'alpha ({alpha}) should be >= 0 and <= 1')
-        optimized_alpha = False
-    except KeyError:
-        optimized_alpha = True
-        alpha = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'alpha ({alpha}) {e}')
 
-    try:
-        initial_level = params['initial_level']
-        initial_level = float(initial_level)
-        if initial_level < 0:
-            raise InvalidParameter(f'initial_level ({initial_level}) should be >= 0')
-        optimized_initial_level = False
-    except KeyError:
-        optimized_initial_level = True
-        initial_level = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'initial_level ({initial_level}) {e}')
+    def parse_numeric_param(param_name, param_value, param_min=None, param_max=None):
+        if not isinstance(param_value, (int, float)) or isinstance(param_value, bool):
+            raise InvalidParameter(f'{param_name} ({param_value}) should be a real number')
+        if param_min is not None and param_value < param_min:
+            raise InvalidParameter(f'{param_name} ({param_value}) should be >= {param_min}')
+        if param_max is not None and param_value > param_max:
+            raise InvalidParameter(f'{param_name} ({param_value}) should be <= {param_max}')
+        return float(param_value)
 
-    try:
-        beta = params['beta']
-        beta = float(beta)
-        if beta < 0 or beta > 1:
-            raise InvalidParameter(f'beta ({beta}) should be >= 0 and <= 1')
-        optimized_beta = False
-    except KeyError:
-        optimized_beta = True
-        beta = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'beta ({beta}) {e}')
+    def parse_integer_param(param_name, param_value, param_min=None, param_max=None):
+        if not isinstance(param_value, int) or isinstance(param_value, bool):
+            raise InvalidParameter(f'{param_name} ({param_value}) should be an integer')
+        if param_min is not None and param_value < param_min:
+            raise InvalidParameter(f'{param_name} ({param_value}) should be >= {param_min}')
+        if param_max is not None and param_value > param_max:
+            raise InvalidParameter(f'{param_name} ({param_value}) should be <= {param_max}')
+        return int(param_value)
 
-    try:
-        initial_slope = params['initial_slope']
-        initial_slope = float(initial_slope)
-        optimized_initial_slope = False
-    except KeyError:
-        optimized_initial_slope = True
-        initial_slope = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'initial_slope ({initial_slope}) {e}')
+    def parse_string_param(param_name, param_value, allowed=None):
+        if not isinstance(param_value, str):
+            raise InvalidParameter(f'{param_name} ({param_value}) should be an string')
+        if allowed is not None and param_value not in allowed:
+            raise InvalidParameter(f'{param_name} ({param_value}) should be one of [{", ".join(allowed)}]')
+        return str(param_value)
 
-    try:
-        gamma = params['gamma']
-        gamma = float(gamma)
-        if gamma < 0 or gamma > 1:
-            raise InvalidParameter(f'gamma ({gamma}) should be >= 0 and <= 1')
-        optimized_gamma = False
-    except KeyError:
-        gamma = None
-        optimized_gamma = True
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'gamma ({gamma}) {e}')
+    def parse_boolean(param_name, param_value):
+        if not isinstance(param_value, bool):
+            raise InvalidParameter(f'{param_name} ({param_value}) should be boolean')
+        return param_value
 
-    trend = params.get('trend', None)
-    if trend and trend not in ['add', 'mul']:
-        raise InvalidParameter(f'trend ({trend}) should be either "add" or "mul"')
+    alpha = None
+    if 'alpha' in params and params['alpha'] is not None:
+        alpha = parse_numeric_param('alpha', params['alpha'], param_min=0, param_max=1)
 
-    damped = params.get('damped', False)
-    if not isinstance(damped, bool):
-        raise InvalidParameter(f'damped ({damped}) should be boolean')
+    beta = None
+    if 'beta' in params and params['beta'] is not None:
+        beta = parse_numeric_param('beta', params['beta'], param_min=0, param_max=1)
 
-    try:
-        phi = params['phi']
-        phi = float(phi)
-        if phi < 0 or phi > 1:
-            raise InvalidParameter(f'phi ({phi}) should be >= 0 and <= 1')
-        optimized_phi = False
-    except KeyError:
-        phi = None
-        optimized_phi = True
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'phi ({phi}) {e}')
+    gamma = None
+    if 'gamma' in params and params['gamma'] is not None:
+        gamma = parse_numeric_param('gamma', params['gamma'], param_min=0, param_max=1)
 
-    if not trend or not damped:
-        phi = None
-        optimized_phi = False
-        damped = False
+    phi = None
+    if 'phi' in params and params['phi'] is not None:
+        phi = parse_numeric_param('phi', params['phi'], param_min=0, param_max=1)
 
-    seasonal = params.get('seasonal', None)
-    if seasonal and seasonal not in ['add', 'mul']:
-        raise InvalidParameter(f'seasonal ({seasonal}) should be either "add" or "mul"')
+    initial_level = None
+    if 'initial_level' in params and params['initial_level'] is not None:
+        initial_level = parse_numeric_param('initial_level', params['initial_level'], param_min=0)
 
-    try:
-        seasonal_periods = int(params['seasonal_periods'])
-        if seasonal_periods <= 0 :
-            raise InvalidParameter(f'seasonal_periods ({seasonal_periods}) should be > 0')
-        optimized_seasonal = True
-    except KeyError:
-        seasonal_periods = None
-        optimized_seasonal = False
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'seasonal_periods ({seasonal_periods}) {e}')
+    initial_slope = None
+    if 'initial_slope' in params and params['initial_slope'] is not None:
+        initial_slope = parse_numeric_param('initial_slope', params['initial_slope'])
 
-    # initial_seasons = params.get('initial_seasons', None)
-    # if initial_seasons and isinstance(initial_seasons, list) and len(initial_seasons) != seasonal_periods:
-    #     raise InvalidParameter(f'initial_seasons ({initial_seasons} is not the length of seasonal_periods ({seasonal_periods})')
-    # if initial_seasons:
-    #     optimized_seasonal = False
+    trend = None
+    if 'trend' in params and params['trend'] is not None:
+        trend = parse_string_param('trend', params['trend'], ['add', 'mul'])
+
+    damped = False
+    if 'damped' in params and params['damped'] is not None:
+        damped = parse_boolean('damped', params['damped'])
+
+    seasonal = None
+    if 'seasonal' in params and params['seasonal'] is not None:
+        seasonal = parse_string_param('seasonal', params['seasonal'], ['add', 'mul'])
+
+    seasonal_periods = None
+    if 'seasonal_periods' in params and params['seasonal_periods'] is not None:
+        seasonal_periods = parse_integer_param('seasonal_periods', params['seasonal_periods'], param_min=1)
+
+    if trend == 'mul' and initial_level == 0.0:
+        raise InvalidParameter(f'initial level can not be {initial_level} if trend={trend}')
+    if damped and not trend:
+        raise InvalidParameter(f'trend must be provided if damped = {damped}')
+    if phi is not None and not damped:
+        raise InvalidParameter(f'damped must be True if phi = {phi}')
+
+    if seasonal and seasonal_periods is None:
+        raise InvalidParameter(f'seasonal_periods must be provided if seasonal = {seasonal}')
+    if seasonal_periods is not None and seasonal is None:
+        raise InvalidParameter(f'seasonal must be provided if seasonal_periods = {seasonal_periods}')
+    if gamma is not None and seasonal is None:
+        raise InvalidParameter(f'seasonal and seasonal_periods must be provided if gamma = {gamma}')
+
+    optimized_alpha = True if alpha is None else False
+    optimized_initial_level = True if initial_level is None else False
+    optimized_beta = True if beta is None else False
+    optimized_initial_slope = True if initial_slope is None else False
+    optimized_phi = True if (phi is None and damped is True) else False
+    optimized_seasonal = True if seasonal else False
+    optimized_gamma = True if (optimized_seasonal and gamma is None) else False
 
     to_fit = False
     if optimized_alpha or optimized_initial_level or optimized_beta or \
             optimized_initial_slope or optimized_seasonal or optimized_gamma or optimized_phi:
         to_fit = True
 
-    if trend == 'mul' and initial_level == 0.0:
-        raise InvalidParameter(f'initial level can not be {initial_level} if trend={trend}')
-
     return {
         'alpha': alpha,
         'initial_level': initial_level,
         'beta': beta,
         'initial_slope': initial_slope,
-        'gamma': gamma,
-        'phi': phi,
         'trend': trend,
         'damped': damped,
+        'phi': phi,
         'seasonal': seasonal,
         'seasonal_periods': seasonal_periods,
-        # 'initial_seasons': initial_seasons,
-        'to_fit': to_fit,
+        'gamma': gamma,
         'optimized_alpha': optimized_alpha,
         'optimized_initial_level': optimized_initial_level,
         'optimized_beta': optimized_beta,
         'optimized_initial_slope': optimized_initial_slope,
         'optimized_phi': optimized_phi,
+        'optimized_seasonal': optimized_seasonal,
         'optimized_gamma': optimized_gamma,
-        'optimized_seasonal': optimized_seasonal
+        'to_fit': to_fit,
     }
 
 
@@ -163,32 +150,12 @@ class HoltWinter:
         )
 
     def _fit_model(self, model, params):
-        # TODO: Pass the initial seasonal factors in the start params
-        """"
-        initial_seasons = params.get('initial_seasons', None)
-        start_params = None
-        if initial_seasons:
-            start_params = [
-                params.get('alpha', None),
-                params.get('beta', None),
-                params.get('gamma', None),
-                params.get('initial_level', None),
-                params.get('initial_slope', None),
-                params.get('phi', None)
-            ]
-            start_params.extend(
-                initial_seasons
-            )
-            start_params = np.array(start_params)
-        """
-
         return model.fit(
             smoothing_level=params.get('alpha', None),
             initial_level=params.get('initial_level', None),
             smoothing_slope=params.get('beta', None),
             initial_slope=params.get('initial_slope', None),
             smoothing_seasonal=params.get('gamma', None),
-#            start_params=start_params,
             damping_slope=params.get('phi', None),
             optimized=params.get('to_fit', True)
         )

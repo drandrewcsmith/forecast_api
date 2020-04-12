@@ -6,7 +6,14 @@ from forecast_api.methods.exceptions import InvalidParameter
 _log = logging.getLogger(__name__)
 
 
+class GenericForecastResource(object):
+
+    def on_post(self, request, response, forecast_method):
+        raise falcon.HTTPNotImplemented(description=f'Not implemented: {forecast_method}')
+
+
 class ForecastResource(object):
+
     def __init__(self, method):
         self._method = method
 

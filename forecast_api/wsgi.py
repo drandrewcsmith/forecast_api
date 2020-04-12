@@ -4,6 +4,8 @@ import structlog
 
 from forecast_api.api.ping import PingResource
 from forecast_api.api.forecast import ForecastResource
+from forecast_api.api.forecast import GenericForecastResource
+
 from forecast_api.app import create_container
 
 _log = structlog.get_logger(__name__)
@@ -40,6 +42,11 @@ def create_callable(container):
         '/v1/forecast/holtwinter',
         ForecastResource(
             container('services.methods.holtwinter')
+        )
+    )
+    app.add_route(
+        '/v1/forecast/{forecast_method}',
+        GenericForecastResource(
         )
     )
 
