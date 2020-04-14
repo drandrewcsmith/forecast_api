@@ -6,3 +6,4 @@ def test_ping(webapi):
 
     assert response.status == falcon.HTTP_OK
     assert response.body.decode('utf-8') == 'pong'
+    assert response.headers['content-type'] == 'application/json'

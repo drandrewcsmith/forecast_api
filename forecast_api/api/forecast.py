@@ -1,7 +1,7 @@
 import falcon
 import logging
 
-from forecast_api.methods.exceptions import InvalidParameter
+from forecast_api.lib.exceptions import InvalidParameter
 
 _log = logging.getLogger(__name__)
 

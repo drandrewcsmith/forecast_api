@@ -1,85 +1,63 @@
 import numpy as np
+
 from statsmodels.tsa.api import Holt as smholt
-from forecast_api.methods.exceptions import InvalidParameter
+
+from forecast_api.lib.exceptions import (
+    InvalidTrendParameters
+)
+from forecast_api.lib.param_type_parsers import (
+    parse_boolean_param,
+    parse_numeric_param,
+)
 
 
 def parse_params(**params):
-    try:
-        alpha = params['alpha']
-        alpha = float(alpha)
-        if alpha < 0 or alpha > 1:
-            raise InvalidParameter(f'alpha ({alpha}) should be >= 0 and <= 1')
-        optimized_alpha = False
-    except KeyError:
-        optimized_alpha = True
-        alpha = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'alpha ({alpha}) {e}')
 
-    try:
-        initial_level = params['initial_level']
-        initial_level = float(initial_level)
-        if initial_level < 0:
-            raise InvalidParameter(f'initial_level ({initial_level}) should be >= 0')
-        optimized_initial_level = False
-    except KeyError:
-        optimized_initial_level = True
-        initial_level = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'initial_level ({initial_level}) {e}')
+    alpha = None
+    if 'alpha' in params and params['alpha'] is not None:
+        alpha = parse_numeric_param('alpha', params['alpha'], param_min=0, param_max=1)
 
-    try:
-        beta = params['beta']
-        beta = float(beta)
-        if beta < 0 or beta > 1:
-            raise InvalidParameter(f'beta ({beta}) should be >= 0 and <= 1')
-        optimized_beta = False
-    except KeyError:
-        optimized_beta = True
-        beta = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'beta ({beta}) {e}')
+    beta = None
+    if 'beta' in params and params['beta'] is not None:
+        beta = parse_numeric_param('beta', params['beta'], param_min=0, param_max=1)
 
-    try:
-        initial_slope = params['initial_slope']
-        initial_slope = float(initial_slope)
-        optimized_initial_slope = False
-    except KeyError:
-        optimized_initial_slope = True
-        initial_slope = None
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'initial_slope ({initial_slope}) {e}')
+    phi = None
+    if 'phi' in params and params['phi'] is not None:
+        phi = parse_numeric_param('phi', params['phi'], param_min=0, param_max=1)
 
-    exponential = params.get('exponential', False)
+    initial_level = None
+    if 'initial_level' in params and params['initial_level'] is not None:
+        initial_level = parse_numeric_param('initial_level', params['initial_level'], param_min=0)
 
-    damped = params.get('damped', False)
-    if not isinstance(damped, bool):
-        raise InvalidParameter(f'damped ({damped}) should be boolean')
+    initial_slope = None
+    if 'initial_slope' in params and params['initial_slope'] is not None:
+        initial_slope = parse_numeric_param('initial_slope', params['initial_slope'])
 
-    try:
-        phi = params['phi']
-        phi = float(phi)
-        if phi < 0 or phi > 1:
-            raise InvalidParameter(f'phi ({phi}) should be >= 0 and <= 1')
-        optimized_phi = False
-    except KeyError:
-        phi = None
-        optimized_phi = True
-    except (TypeError, ValueError) as e:
-        raise InvalidParameter(f'phi ({phi}) {e}')
+    exponential = False
+    if 'exponential' in params and params['exponential'] is not None:
+        exponential = parse_boolean_param('exponential', params['exponential'])
 
-    if not exponential or not damped:
-        phi = None
-        optimized_phi = False
-        damped = False
+    damped = False
+    if 'damped' in params and params['damped'] is not None:
+        damped = parse_boolean_param('damped', params['damped'])
+
+    if exponential and initial_level == 0.0:
+        raise InvalidTrendParameters(f'initial level can not be {initial_level} if exponential={exponential}')
+    if damped and not exponential:
+        raise InvalidTrendParameters(f'exponential must True if damped = {damped}')
+    if phi is not None and not damped:
+        raise InvalidTrendParameters(f'damped must be True if phi = {phi}')
+
+    optimized_alpha = True if alpha is None else False
+    optimized_initial_level = True if initial_level is None else False
+    optimized_beta = True if beta is None else False
+    optimized_initial_slope = True if initial_slope is None else False
+    optimized_phi = True if (phi is None and damped is True) else False
 
     to_fit = False
     if optimized_alpha or optimized_initial_level or optimized_beta or \
             optimized_initial_slope or optimized_phi:
         to_fit = True
-
-    if exponential and initial_level == 0.0:
-        raise InvalidParameter(f'initial level can not be {initial_level} if exponential={exponential}')
 
     return {
         'alpha': alpha,
@@ -180,6 +158,7 @@ class Holt:
             'params': fit_params
         }
 
+
 if __name__ == '__main__':
 
     import pandas as pd
@@ -190,9 +169,9 @@ if __name__ == '__main__':
 #        'initial_level': 50,
 #        'beta': 0.02,
 #        'initial_slope': 0.0,
-#        'exponential': False,
-#        'damped': False,
-#        'phi': False
+        'exponential': True,
+        'damped': True,
+#        'phi': 0.1
     }
     hes = Holt(parse_params)
     res = hes.fit_forecast(
@@ -200,7 +179,11 @@ if __name__ == '__main__':
         test_forecast_horizon,
         **test_params
     )
-    print(res)
+    print('#'*50)
+    print(res['forecast'])
+    for key in sorted(res['params']):
+        value = res['params'][key]
+        print(f'{key} = {value}')
 
     #res = hes.forecast(
     #    test_data,

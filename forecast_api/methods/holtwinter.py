@@ -1,41 +1,20 @@
-import numbers
 import numpy as np
 
+from forecast_api.lib.exceptions import (
+    InvalidSeasonalParameters,
+    InvalidTrendParameters
+)
+from forecast_api.lib.param_type_parsers import (
+    parse_boolean_param,
+    parse_integer_param,
+    parse_numeric_param,
+    parse_string_param,
+)
+
 from statsmodels.tsa.api import ExponentialSmoothing as smholtwinter
-from forecast_api.methods.exceptions import InvalidParameter
 
 
 def parse_params(**params):
-
-    def parse_numeric_param(param_name, param_value, param_min=None, param_max=None):
-        if not isinstance(param_value, (int, float)) or isinstance(param_value, bool):
-            raise InvalidParameter(f'{param_name} ({param_value}) should be a real number')
-        if param_min is not None and param_value < param_min:
-            raise InvalidParameter(f'{param_name} ({param_value}) should be >= {param_min}')
-        if param_max is not None and param_value > param_max:
-            raise InvalidParameter(f'{param_name} ({param_value}) should be <= {param_max}')
-        return float(param_value)
-
-    def parse_integer_param(param_name, param_value, param_min=None, param_max=None):
-        if not isinstance(param_value, int) or isinstance(param_value, bool):
-            raise InvalidParameter(f'{param_name} ({param_value}) should be an integer')
-        if param_min is not None and param_value < param_min:
-            raise InvalidParameter(f'{param_name} ({param_value}) should be >= {param_min}')
-        if param_max is not None and param_value > param_max:
-            raise InvalidParameter(f'{param_name} ({param_value}) should be <= {param_max}')
-        return int(param_value)
-
-    def parse_string_param(param_name, param_value, allowed=None):
-        if not isinstance(param_value, str):
-            raise InvalidParameter(f'{param_name} ({param_value}) should be an string')
-        if allowed is not None and param_value not in allowed:
-            raise InvalidParameter(f'{param_name} ({param_value}) should be one of [{", ".join(allowed)}]')
-        return str(param_value)
-
-    def parse_boolean(param_name, param_value):
-        if not isinstance(param_value, bool):
-            raise InvalidParameter(f'{param_name} ({param_value}) should be boolean')
-        return param_value
 
     alpha = None
     if 'alpha' in params and params['alpha'] is not None:
@@ -67,7 +46,7 @@ def parse_params(**params):
 
     damped = False
     if 'damped' in params and params['damped'] is not None:
-        damped = parse_boolean('damped', params['damped'])
+        damped = parse_boolean_param('damped', params['damped'])
 
     seasonal = None
     if 'seasonal' in params and params['seasonal'] is not None:
@@ -78,18 +57,18 @@ def parse_params(**params):
         seasonal_periods = parse_integer_param('seasonal_periods', params['seasonal_periods'], param_min=1)
 
     if trend == 'mul' and initial_level == 0.0:
-        raise InvalidParameter(f'initial level can not be {initial_level} if trend={trend}')
+        raise InvalidTrendParameters(f'initial level can not be {initial_level} if trend={trend}')
     if damped and not trend:
-        raise InvalidParameter(f'trend must be provided if damped = {damped}')
+        raise InvalidTrendParameters(f'trend must be provided if damped = {damped}')
     if phi is not None and not damped:
-        raise InvalidParameter(f'damped must be True if phi = {phi}')
+        raise InvalidTrendParameters(f'damped must be True if phi = {phi}')
 
     if seasonal and seasonal_periods is None:
-        raise InvalidParameter(f'seasonal_periods must be provided if seasonal = {seasonal}')
+        raise InvalidSeasonalParameters(f'seasonal_periods must be provided if seasonal = {seasonal}')
     if seasonal_periods is not None and seasonal is None:
-        raise InvalidParameter(f'seasonal must be provided if seasonal_periods = {seasonal_periods}')
+        raise InvalidSeasonalParameters(f'seasonal must be provided if seasonal_periods = {seasonal_periods}')
     if gamma is not None and seasonal is None:
-        raise InvalidParameter(f'seasonal and seasonal_periods must be provided if gamma = {gamma}')
+        raise InvalidSeasonalParameters(f'seasonal and seasonal_periods must be provided if gamma = {gamma}')
 
     optimized_alpha = True if alpha is None else False
     optimized_initial_level = True if initial_level is None else False
@@ -104,7 +83,7 @@ def parse_params(**params):
             optimized_initial_slope or optimized_seasonal or optimized_gamma or optimized_phi:
         to_fit = True
 
-    return {
+    params = {
         'alpha': alpha,
         'initial_level': initial_level,
         'beta': beta,
@@ -124,18 +103,19 @@ def parse_params(**params):
         'optimized_gamma': optimized_gamma,
         'to_fit': to_fit,
     }
+    return params
 
 
 class HoltWinter:
 
-    def __init__(self, parse_params):
-        self._parse_params = parse_params
+    def __init__(self, params_parser):
+        self._parse_params = params_parser
 
     def _parse_data(self, input_data):
         try:
             input_data = input_data.values
             input_data_length = input_data.shape[0]
-        except Exception:
+        except AttributeError:
             input_data = np.array(input_data)
             input_data_length = len(input_data)
         return input_data, input_data_length
@@ -152,22 +132,26 @@ class HoltWinter:
     def _fit_model(self, model, params):
         return model.fit(
             smoothing_level=params.get('alpha', None),
-            initial_level=params.get('initial_level', None),
             smoothing_slope=params.get('beta', None),
-            initial_slope=params.get('initial_slope', None),
             smoothing_seasonal=params.get('gamma', None),
             damping_slope=params.get('phi', None),
-            optimized=params.get('to_fit', True)
+            optimized=params.get('to_fit', True),
+            initial_level=params.get('initial_level', None),
+            initial_slope=params.get('initial_slope', None),
         )
 
     def _fit_params(self, fit, params):
-        params['alpha'] = fit.params['smoothing_level']
-        params['initial_level'] = fit.params['initial_level']
-        params['beta'] = fit.params['smoothing_slope']
-        params['initial_slope'] = fit.params['initial_slope']
-        params['gamma'] = fit.params['smoothing_seasonal']
-        params['phi'] = fit.params['damping_slope']
+        def _parse_np_nan(value):
+            if isinstance(value, np.float):
+                return None if np.isnan(value) else float(value)
+            return None
+        params['alpha'] = _parse_np_nan(fit.params['smoothing_level'])
+        params['initial_level'] = _parse_np_nan(fit.params['initial_level'])
+        params['beta'] = _parse_np_nan(fit.params['smoothing_slope'])
+        params['initial_slope'] = _parse_np_nan(fit.params['initial_slope'])
+        params['phi'] = _parse_np_nan(fit.params['damping_slope'])
         params['initial_seasons'] = list(fit.params['initial_seasons'])
+        params['gamma'] = _parse_np_nan(fit.params['smoothing_seasonal'])
         return params
 
     def _forecast(self, fit, forecast_horizon):
@@ -179,11 +163,11 @@ class HoltWinter:
         return model.predict(
             {
                 'smoothing_level': params.get('alpha', None),
-                'initial_level': params.get('initial_level', None),
                 'smoothing_slope': params.get('beta', None),
-                'initial_slope': params.get('initial_slope', None),
                 'smoothing_seasonal': params.get('gamma', None),
                 'damping_slope': params.get('phi', None),
+                'initial_level': params.get('initial_level', None),
+                'initial_slope': params.get('initial_slope', None),
             },
             start=start_index,
             end=end_index
@@ -214,37 +198,43 @@ class HoltWinter:
             'params': fit_params
         }
 
+
 if __name__ == '__main__':
 
     import pandas as pd
-    test_data = pd.Series([1.1, 1.9, 3.1, 3.9, 5.1, 3.9, 3.1, 1.9, 1.1, 2.1, 2.9, 4.1, 4.9, 4.1, 2.9, 2.1, 1, 2, 3, 4, 5, 4, 3, 2, 1])
-    forecast_horizon = 1
-    params = {
-        'alpha': 0.05,
-        'beta': 0.02,
-        'gamma': 0.01,
-        'initial_level': 0.9,
-        'initial_slope': 0.5, # when trend dampening is on the initial slope isn't respected
-        'trend': 'mul',
-        'damped': True,
-        'phi': 0.1,
-        'seasonal_periods': 8,
+    test_data = pd.Series(
+        [1.1, 1.9, 3.1, 3.9, 5.1, 3.9, 3.1, 1.9, 1.1, 2.1, 2.9, 4.1, 4.9, 4.1, 2.9, 2.1, 1, 2, 3, 4, 5, 4, 3, 2, 1]
+    )
+
+    test_forecast_horizon = 12
+    test_params = {
+        #'alpha': 0.5,
+        #'initial_level': 1.0,
+        #'beta': 0.02,
+        #'initial_slope': 0.0,
+        'trend': 'add',
+        #'damped': True,
+        #'phi': 0.1,
         'seasonal': 'add',
+        'seasonal_periods': 8,
+        #'gamma': 0.01,
     }
     hes = HoltWinter(parse_params)
     res = hes.fit_forecast(
         test_data,
-        forecast_horizon,
-        **params
+        test_forecast_horizon,
+        **test_params
     )
+    print('#'*50)
     print(res['forecast'])
     for key in sorted(res['params']):
         value = res['params'][key]
         print(f'{key} = {value}')
 
-    #res = hes.forecast(
-    #    test_data,
-    #    forecast_horizon,
-    #    **params
-    #)
-    #print(res)
+    print('#'*50)
+    res = hes.forecast(
+        test_data,
+        test_forecast_horizon,
+        **test_params
+    )
+    print(res)
