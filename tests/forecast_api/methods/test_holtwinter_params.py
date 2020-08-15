@@ -29,8 +29,8 @@ invalid_damped_values = base_invalid_values+[-1.1, -0.5, 1.1]
 invalid_seasonal_values = base_invalid_values+['notadd', 'notmul', True, False, -1.1, -0.5, 1.1]
 invalid_seasonal_period_values = base_invalid_values+[True, False, -1.1, -0.5, 1.1, 0, -1]
 
-# TODO Maybe think about using hypothesis here to generate these invalid values
 
+# TODO Maybe think about using hypothesis here to generate these invalid values
 @pytest.fixture
 def parse_params(container):
     def _parse_params(**kwargs):

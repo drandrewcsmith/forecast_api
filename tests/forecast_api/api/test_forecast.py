@@ -22,6 +22,7 @@ def test_post_holtwinter(webapi):
         status=200
     )
 
+
 def test_post_holt(webapi):
 
     response = webapi.post_json(

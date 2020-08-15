@@ -207,16 +207,16 @@ if __name__ == '__main__':
 
     test_forecast_horizon = 12
     test_params = {
-        #'alpha': 0.5,
-        #'initial_level': 1.0,
-        #'beta': 0.02,
-        #'initial_slope': 0.0,
+        # 'alpha': 0.5,
+        # 'initial_level': 1.0,
+        # 'beta': 0.02,
+        # 'initial_slope': 0.0,
         'trend': 'add',
-        #'damped': True,
-        #'phi': 0.1,
+        # 'damped': True,
+        # 'phi': 0.1,
         'seasonal': 'add',
         'seasonal_periods': 8,
-        #'gamma': 0.01,
+        # 'gamma': 0.01,
     }
 
     hes = HoltWinter(parse_params, smholtwinter)
