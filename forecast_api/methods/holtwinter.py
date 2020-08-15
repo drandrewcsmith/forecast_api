@@ -4,14 +4,12 @@ from forecast_api.lib.exceptions import (
     InvalidSeasonalParameters,
     InvalidTrendParameters
 )
-from forecast_api.lib.param_type_parsers import (
+from forecast_api.lib.param_parsers import (
     parse_boolean_param,
     parse_integer_param,
     parse_numeric_param,
     parse_string_param,
 )
-
-from statsmodels.tsa.api import ExponentialSmoothing as smholtwinter
 
 
 def parse_params(**params):
@@ -108,8 +106,9 @@ def parse_params(**params):
 
 class HoltWinter:
 
-    def __init__(self, params_parser):
+    def __init__(self, params_parser, forecast_method):
         self._parse_params = params_parser
+        self._forecast_method = forecast_method
 
     def _parse_data(self, input_data):
         try:
@@ -121,7 +120,7 @@ class HoltWinter:
         return input_data, input_data_length
 
     def _create_model(self, input_data, params):
-        return smholtwinter(
+        return self._forecast_method(
             input_data,
             trend=params.get('trend', None),
             damped=params.get('damped', None),
@@ -201,10 +200,10 @@ class HoltWinter:
 
 if __name__ == '__main__':
 
-    import pandas as pd
-    test_data = pd.Series(
-        [1.1, 1.9, 3.1, 3.9, 5.1, 3.9, 3.1, 1.9, 1.1, 2.1, 2.9, 4.1, 4.9, 4.1, 2.9, 2.1, 1, 2, 3, 4, 5, 4, 3, 2, 1]
-    )
+    from statsmodels.tsa.api import ExponentialSmoothing as smholtwinter
+    test_data = [
+        1.1, 1.9, 3.1, 3.9, 5.1, 3.9, 3.1, 1.9, 1.1, 2.1, 2.9, 4.1, 4.9, 4.1, 2.9, 2.1, 1, 2, 3, 4, 5, 4, 3, 2, 1
+    ]
 
     test_forecast_horizon = 12
     test_params = {
@@ -219,7 +218,8 @@ if __name__ == '__main__':
         'seasonal_periods': 8,
         #'gamma': 0.01,
     }
-    hes = HoltWinter(parse_params)
+
+    hes = HoltWinter(parse_params, smholtwinter)
     res = hes.fit_forecast(
         test_data,
         test_forecast_horizon,

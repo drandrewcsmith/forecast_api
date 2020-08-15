@@ -27,7 +27,7 @@ invalid_damped_values = base_invalid_values+[-1.1, -0.5, 1.1]
 @pytest.fixture
 def parse_params(container):
     def _parse_params(**kwargs):
-        parse_params = container('services.methods.parse_holt_params')
+        parse_params = container('services.methods.holt_parse_params')
         return parse_params(**kwargs)
     return _parse_params
 

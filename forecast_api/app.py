@@ -1,14 +1,17 @@
 import os
+import structlog
+
 from configparser import ConfigParser
 from functools import partial
-
-import structlog
 from knot import Container
 
+from statsmodels.tsa.api import ExponentialSmoothing as smholtwinter
+from statsmodels.tsa.api import Holt as smholt
+
 from forecast_api.methods import Holt
-from forecast_api.methods import parse_holt_params
+from forecast_api.methods import holt_parse_params
 from forecast_api.methods import HoltWinter
-from forecast_api.methods import parse_holtwinter_params
+from forecast_api.methods import holtwinter_parse_params
 
 
 def create_container(ini_path=None) -> Container:
@@ -21,48 +24,61 @@ def create_container(ini_path=None) -> Container:
         cache=True,
     )
     container.add_service(
-        partial(_forecast_method_holt),
+        partial(_forecast_holt_method),
         name='services.methods.holt',
     )
     container.add_service(
-        partial(
-            _forecast_params_holt
-        ),
-        name='services.methods.parse_holt_params'
+        partial(_forecast_holt_model),
+        name='services.methods.holt_model',
     )
     container.add_service(
-        partial(
-            _forecast_method_holtwinter
-        ),
+        partial(_forecast_holt_params),
+        name='services.methods.holt_parse_params'
+    )
+
+    container.add_service(
+        partial(_forecast_holtwinter_method),
         name='services.methods.holtwinter',
     )
     container.add_service(
-        partial(
-            _forecast_params_holtwinter
-        ),
-        name='services.methods.parse_holtwinter_params'
+        partial(_forecast_holtwinter_model),
+        name='services.methods.holtwinter_model'
+    )
+    container.add_service(
+        partial(_forecast_holtwinter_params),
+        name='services.methods.holtwinter_parse_params'
     )
 
     return container
 
 
-def _forecast_params_holt(c):
-    return partial(parse_holt_params)
+def _forecast_holt_params(c):
+    return partial(holt_parse_params)
 
 
-def _forecast_method_holt(c):
+def _forecast_holt_model(c):
+    return partial(smholt)
+
+
+def _forecast_holt_method(c):
     return Holt(
-        c('services.methods.parse_holt_params')
+        c('services.methods.holt_parse_params'),
+        c('services.methods.holt_model')
     )
 
 
-def _forecast_params_holtwinter(c):
-    return partial(parse_holtwinter_params)
+def _forecast_holtwinter_params(c):
+    return partial(holtwinter_parse_params)
 
 
-def _forecast_method_holtwinter(c):
+def _forecast_holtwinter_model(c):
+    return partial(smholtwinter)
+
+
+def _forecast_holtwinter_method(c):
     return HoltWinter(
-        c('services.methods.parse_holtwinter_params')
+        c('services.methods.holtwinter_parse_params'),
+        c('services.methods.holtwinter_model')
     )
 
 

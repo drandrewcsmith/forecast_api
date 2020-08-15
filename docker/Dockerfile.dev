@@ -5,6 +5,7 @@ RUN apt-get -qq install gcc > /dev/null
 RUN apt-get -qq purge --auto-remove
 RUN apt-get -qq update
 WORKDIR /usr/src/app
+RUN python3 -m pip install --upgrade pip
 RUN pip3 install -q --upgrade setuptools
 COPY requirements.txt /usr/src/app
 RUN pip3 install -q -r requirements.txt

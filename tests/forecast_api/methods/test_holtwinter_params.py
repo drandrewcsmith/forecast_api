@@ -34,7 +34,7 @@ invalid_seasonal_period_values = base_invalid_values+[True, False, -1.1, -0.5, 1
 @pytest.fixture
 def parse_params(container):
     def _parse_params(**kwargs):
-        parse_params = container('services.methods.parse_holtwinter_params')
+        parse_params = container('services.methods.holtwinter_parse_params')
         return parse_params(**kwargs)
     return _parse_params
 

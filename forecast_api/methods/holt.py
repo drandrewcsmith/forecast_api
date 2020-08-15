@@ -1,11 +1,10 @@
 import numpy as np
 
-from statsmodels.tsa.api import Holt as smholt
 
 from forecast_api.lib.exceptions import (
     InvalidTrendParameters
 )
-from forecast_api.lib.param_type_parsers import (
+from forecast_api.lib.param_parsers import (
     parse_boolean_param,
     parse_numeric_param,
 )
@@ -78,27 +77,19 @@ def parse_params(**params):
 
 class Holt:
 
-    def __init__(self, parse_params):
-        self._parse_params = parse_params
+    def __init__(self, params_parser, forecast_method):
+        self._parse_params = params_parser
+        self._forecast_method = forecast_method
 
-    def _parse_data(self, input_data):
-        try:
-            input_data = input_data.values
-            input_data_length = input_data.shape[0]
-        except Exception:
-            input_data = np.array(input_data)
-            input_data_length = len(input_data)
-        return input_data, input_data_length
+    def fit_forecast(self, input_data, forecast_horizon, **params):
+        params = self._parse_params(**params)
 
-    def _create_model(self, input_data, params):
-        return smholt(
-            input_data,
+        model = self._forecast_method(
+            np.array(input_data),
             exponential=params.get('exponential', None),
             damped=params.get('damped', None)
         )
-
-    def _fit_model(self, model, params):
-        return model.fit(
+        fit = model.fit(
             smoothing_level=params.get('alpha', None),
             initial_level=params.get('initial_level', None),
             smoothing_slope=params.get('beta', None),
@@ -106,22 +97,31 @@ class Holt:
             damping_slope=params.get('phi', None),
             optimized=params.get('to_fit', True)
         )
-
-    def _fit_params(self, fit, params):
         params['alpha'] = fit.params['smoothing_level']
         params['initial_level'] = fit.params['initial_level']
         params['beta'] = fit.params['smoothing_slope']
         params['initial_slope'] = fit.params['initial_slope']
         params['phi'] = fit.params['damping_slope']
-        return params
 
-    def _forecast(self, fit, forecast_horizon):
-        return fit.forecast(
+        forecast = fit.forecast(
             forecast_horizon
         )
+        return {
+            'forecast': list(forecast),
+            'params': params
+        }
 
-    def _predict(self, model, start_index, end_index, params):
-        return model.predict(
+    def forecast(self, input_data, forecast_horizon, **params):
+        params = self._parse_params(**params)
+        if params['to_fit']:
+            raise ValueError(f'use fit_forecast to fit model with provided parameters')
+        model = self._forecast_method(
+            np.array(input_data),
+            np.array(input_data),
+            exponential=params.get('exponential', None),
+            damped=params.get('damped', None)
+        )
+        forecast = model.predict(
             {
                 'smoothing_level': params.get('alpha', None),
                 'initial_level': params.get('initial_level', None),
@@ -129,51 +129,33 @@ class Holt:
                 'initial_slope': params.get('initial_slope', None),
                 'damping_slope': params.get('phi', None),
             },
-            start=start_index,
-            end=end_index
+            start=len(input_data),
+            end=len(input_data)+forecast_horizon-1
         )
-
-    def forecast(self, input_data, forecast_horizon, **params):
-        params = self._parse_params(**params)
-        if params['to_fit']:
-            raise ValueError(f'use fit_forecast to fit model with provided parameters')
-        input_data, input_data_length = self._parse_data(input_data)
-        model = self._create_model(input_data, params)
-        forecast = self._predict(model, input_data_length, input_data_length+forecast_horizon-1, params)
         return {
-            'forecast': forecast,
+            'forecast': list(forecast),
             'params': params
         }
 
-    def fit_forecast(self, input_data, forecast_horizon, **params):
-        params = self._parse_params(**params)
-        input_data, input_data_length = self._parse_data(input_data)
-        model = self._create_model(input_data, params)
-        fit = self._fit_model(model, params)
-        fit_params = self._fit_params(fit, params)
-        forecast = self._forecast(fit, forecast_horizon)
-
-        return {
-            'forecast': list(forecast),
-            'params': fit_params
-        }
-
-
 if __name__ == '__main__':
 
-    import pandas as pd
-    test_data = pd.Series([8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7, 8])
+    from statsmodels.tsa.api import Holt as smholt
+
+    test_data = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7, 8]
     test_forecast_horizon = 12
     test_params = {
-#        'alpha': 0.0,
-#        'initial_level': 50,
-#        'beta': 0.02,
-#        'initial_slope': 0.0,
-        'exponential': True,
-        'damped': True,
-#        'phi': 0.1
+        # 'alpha': 0.0,
+        # 'initial_level': 50,
+        # 'beta': 0.02,
+        # 'initial_slope': 0.0,
+        # 'exponential': True,
+        # 'damped': True,
+        # 'phi': 0.1
     }
-    hes = Holt(parse_params)
+    hes = Holt(
+        parse_params,
+        smholt
+    )
     res = hes.fit_forecast(
         test_data,
         test_forecast_horizon,
@@ -185,9 +167,14 @@ if __name__ == '__main__':
         value = res['params'][key]
         print(f'{key} = {value}')
 
-    #res = hes.forecast(
-    #    test_data,
-    #    forecast_horizon,
-    #    **params
-    #)
-    #print(res)
+    fitted_params = res['params']
+    res = hes.forecast(
+        test_data,
+        test_forecast_horizon,
+        **fitted_params
+    )
+    print('#'*50)
+    print(res['forecast'])
+    for key in sorted(res['params']):
+        value = res['params'][key]
+        print(f'{key} = {value}')
