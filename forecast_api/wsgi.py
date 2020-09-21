@@ -33,6 +33,13 @@ def create_callable(container):
         PingResource()
     )
     app.add_route(
+        '/v1/forecast/average',
+        ForecastResource(
+            container('services.methods.average')
+
+        )
+    )
+    app.add_route(
         '/v1/forecast/holt',
         ForecastResource(
             container('services.methods.holt')

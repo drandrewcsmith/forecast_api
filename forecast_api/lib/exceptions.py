@@ -24,3 +24,7 @@ class InvalidTrendParameters(InvalidParameter):
 
 class InvalidStringParameter(InvalidParameter):
     pass
+
+
+class InvalidAverageWindowParameter(InvalidParameter):
+    pass

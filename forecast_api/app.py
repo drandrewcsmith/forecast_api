@@ -8,6 +8,9 @@ from knot import Container
 from statsmodels.tsa.api import ExponentialSmoothing as smholtwinter
 from statsmodels.tsa.api import Holt as smholt
 
+from forecast_api.methods import Average
+from forecast_api.methods import average_parse_params
+from forecast_api.methods import average_model
 from forecast_api.methods import Holt
 from forecast_api.methods import holt_parse_params
 from forecast_api.methods import HoltWinter
@@ -23,6 +26,20 @@ def create_container(ini_path=None) -> Container:
         provider=_read_config,
         cache=True,
     )
+
+    container.add_service(
+        partial(_forecast_average_method),
+        name='services.methods.average',
+    )
+    container.add_service(
+        partial(_forecast_average_model),
+        name='services.methods.average_model',
+    )
+    container.add_service(
+        partial(_forecast_average_params),
+        name='services.methods.average_parse_params'
+    )
+
     container.add_service(
         partial(_forecast_holt_method),
         name='services.methods.holt',
@@ -50,6 +67,21 @@ def create_container(ini_path=None) -> Container:
     )
 
     return container
+
+
+def _forecast_average_params(c):
+    return partial(average_parse_params)
+
+
+def _forecast_average_model(c):
+    return partial(average_model)
+
+
+def _forecast_average_method(c):
+    return Average(
+        c('services.methods.average_parse_params'),
+        c('services.methods.average_model')
+    )
 
 
 def _forecast_holt_params(c):
